@@ -8,10 +8,11 @@ import requests
 import datetime
 import pandas as pd
 import numpy as np
+import json
 from bs4 import BeautifulSoup
 
 keys={}
-with open("/Users/jagluck/Documents/GitHub/federalregisterbot/keys.json","r") as f:
+with open("keys.json","r") as f:
     keys = json.loads(f.read())
     
 # Consumer keys and access tokens, used for OAuth
@@ -65,12 +66,15 @@ def getSingleDoc(id):
 def getFullText(url):
     r = requests.get(url)
     data = r.text
-    soup = BeautifulSoup(data)
+    soup = BeautifulSoup(data,"html.parser")
     return soup
         
 #date = getDate()
-for k in range(10,30):
-    date="2018-01-" + str(k)
+numdays = 60
+base = datetime.datetime.today()
+for k in [base - datetime.timedelta(days=x) for x in range(0, numdays)]:
+    #date="2018-01-" + str(k)
+    date = k.strftime('%Y-%m-%d')
     i = getDailyLinks(date)
     if (i.json()['count']<=0):
         continue
@@ -87,8 +91,6 @@ for k in range(10,30):
     significants = []
     topics = []
     #agencies = []
-    
-    print(i.json()['results'][0].keys())
     
     for j in results:
         #s=getSingleDoc(j['document_number'])
@@ -123,10 +125,11 @@ for k in range(10,30):
         irow = maryland.iterrows()
         for i in irow:
             print(i[1]['title'])
+            print(i[1]['publication_date'])
             buildTweet(i[1]['title'],i[1]['html_url'])
             text = getFullText(i[1]['body_html_url'])
             #print(text)
-            #print("\n \n \n Alejandro _____________ \n \n \n")
+            print("\n")
     
 # text = "EPA Final Rule"
 # link = "https://www.federalregister.gov/documents/2018/01/29/2018-01518/approval-and-promulgation-of-air-quality-implementation-plans-maryland-nonattainment-new-source"
