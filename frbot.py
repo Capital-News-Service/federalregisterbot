@@ -1,12 +1,14 @@
 #pip.main(['install','tweepy'])
 #pip.main(['install','requests'])
 #pip.main(['install','pandas'])
+#pip.main(['install','beautifulsoup4'])
 
 import tweepy
 import requests
 import datetime
 import pandas as pd
 import numpy as np
+from bs4 import BeautifulSoup
 
 keys={}
 with open("/Users/jagluck/Documents/GitHub/federalregisterbot/keys.json","r") as f:
@@ -30,16 +32,27 @@ def sendTweet(content):
     
 def buildTweet(text, link):
     tweet = text + " " + link
-    sendTweet(tweet)
+    #sendTweet(tweet)
     
 def getDate():
     now = datetime.datetime.now()
     date = now.strftime('%Y-%m-%d')
-    print(date)
     return date
     
 def getDailyLinks(date):
-    params = {'per_page': '1000', 'order' : 'relevance', 'conditions[publication_date][is]': date}
+    params = {'per_page': '1000', 'order' : 'relevance', 'conditions[publication_date][is]': date, 'fields[]' :
+        ["abstract",
+        "action",
+        "agencies",
+        "body_html_url",
+        "html_url",
+        "document_number",
+        "significant",
+        "topics",
+        "type",
+        "title",
+        "publication_date"]
+    }
     url = 'https://www.federalregister.gov/api/v1/documents.json'
     r = requests.get(url, params=params)
     return r
@@ -47,11 +60,17 @@ def getDailyLinks(date):
 def getSingleDoc(id):
     url = 'https://www.federalregister.gov/api/v1/documents/' + id + '.json'
     r = requests.get(url)
-    return r.json()    
+    return r.json()   
     
-date = getDate()
+def getFullText(url):
+    r = requests.get(url)
+    data = r.text
+    soup = BeautifulSoup(data)
+    return soup
+        
+#date = getDate()
 for k in range(10,30):
-    date=date[:-2] + str(k)
+    date="2018-01-" + str(k)
     i = getDailyLinks(date)
     if (i.json()['count']<=0):
         continue
@@ -62,7 +81,14 @@ for k in range(10,30):
     abstracts = []
     publication_dates = []
     html_urls = []
+    body_html_urls = []
+    document_numbers = []
+    actions = []
+    significants = []
+    topics = []
     #agencies = []
+    
+    print(i.json()['results'][0].keys())
     
     for j in results:
         #s=getSingleDoc(j['document_number'])
@@ -71,13 +97,23 @@ for k in range(10,30):
         abstracts.append(j['abstract'])
         publication_dates.append(j['publication_date'])
         html_urls.append(j['html_url'])
+        body_html_urls.append(j['body_html_url'])
+        document_numbers.append(j['document_number'])
+        actions.append(j['action'])
+        significants.append(j['significant'])
+        topics.append(j['topics'])
         
     data = pd.DataFrame(
         {'title': titles,
          'type': types,
          'abstact': abstracts,
          'publication_date' : publication_dates,
-         'html_url' : html_urls
+         'html_url' : html_urls,
+         'document_number' : document_numbers,
+         'action' : actions,
+         'significant' : significants,
+         'topic' : topics,
+         'body_html_url' : body_html_urls
         })
     
     data = data.replace(np.nan, '', regex=True)    
@@ -88,13 +124,10 @@ for k in range(10,30):
         for i in irow:
             print(i[1]['title'])
             buildTweet(i[1]['title'],i[1]['html_url'])
-    
+            text = getFullText(i[1]['body_html_url'])
+            #print(text)
+            #print("\n \n \n Alejandro _____________ \n \n \n")
     
 # text = "EPA Final Rule"
 # link = "https://www.federalregister.gov/documents/2018/01/29/2018-01518/approval-and-promulgation-of-air-quality-implementation-plans-maryland-nonattainment-new-source"
-# buildTweet(text, link)    
-
-    
-
-    
- 
+# buildTweet(text, link)   
