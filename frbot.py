@@ -9,6 +9,7 @@ import datetime
 import pandas as pd
 import numpy as np
 import json
+import re
 from bs4 import BeautifulSoup
 
 keys={}
@@ -69,68 +70,101 @@ def getFullText(url):
     soup = BeautifulSoup(data,"html.parser")
     return soup
         
-#date = getDate()
-numdays = 60
-base = datetime.datetime.today()
-for k in [base - datetime.timedelta(days=x) for x in range(0, numdays)]:
-    #date="2018-01-" + str(k)
-    date = k.strftime('%Y-%m-%d')
-    i = getDailyLinks(date)
-    if (i.json()['count']<=0):
-        continue
-    results = i.json()['results']
-    
-    titles = []
-    types = []
-    abstracts = []
-    publication_dates = []
-    html_urls = []
-    body_html_urls = []
-    document_numbers = []
-    actions = []
-    significants = []
-    topics = []
-    #agencies = []
-    
-    for j in results:
-        #s=getSingleDoc(j['document_number'])
-        titles.append(j['title'])
-        types.append(j['type'])
-        abstracts.append(j['abstract'])
-        publication_dates.append(j['publication_date'])
-        html_urls.append(j['html_url'])
-        body_html_urls.append(j['body_html_url'])
-        document_numbers.append(j['document_number'])
-        actions.append(j['action'])
-        significants.append(j['significant'])
-        topics.append(j['topics'])
+def getKeywordStats(days):
+    base = datetime.datetime.today()
+    data = []
+    for k in [base - datetime.timedelta(days=x) for x in range(0, days)]:
+        date = k.strftime('%Y-%m-%d')
+        digest = getDailyLinks(date)
+        if (digest.json()['count'] == 0):
+            continue
+
+        for j in digest.json()['results']:
+            entry = {'title' : j['title'],
+                'type' : j['type'],
+                'abstract' : j['abstract'],
+                'action' : j['action'],
+                'publication_date' : j['publication_date'],
+                'html_url' : j['html_url'],
+                'body_html_url' : j['body_html_url'],
+                'document_number' : j['document_number'],
+                'significant' : j['significant'],
+                'topic' : j['topics']}
+            data.append(entry)
+    stats = {'abstract_keywords' : {}}
+    print len(data)
+    for entry in data:
+        if (entry['abstract'] != None):
+            abstract = entry['abstract'].encode('ascii','ignore')
+            print '\n'
+            print abstract
+            print '\n'
+            for i in re.findall('(?:(?:[A-Z][\w\-\[\]\.]*\w,?\s|U\.S\.\s|Mr\.\s|\Mrs\.\s)(?:[A-Z][\w\-\[\]\.]+\w,?\s|and\s|the\s|for\s|of\s)*(?:[A-Z][\w\-\[\]\.,]+\w|\d+))|(?:http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)|(?:[\w\-\[\]\.]+\w)',abstract):
+                    print i
+
+def filter():
+    numdays = 60
+    base = datetime.datetime.today()
+    for k in [base - datetime.timedelta(days=x) for x in range(0, numdays)]:
+        #date="2018-01-" + str(k)
+        date = k.strftime('%Y-%m-%d')
+        i = getDailyLinks(date)
+        if (i.json()['count']<=0):
+            continue
+        results = i.json()['results']
         
-    data = pd.DataFrame(
-        {'title': titles,
-         'type': types,
-         'abstact': abstracts,
-         'publication_date' : publication_dates,
-         'html_url' : html_urls,
-         'document_number' : document_numbers,
-         'action' : actions,
-         'significant' : significants,
-         'topic' : topics,
-         'body_html_url' : body_html_urls
-        })
-    
-    data = data.replace(np.nan, '', regex=True)    
-    maryland = data[data['abstact'].str.contains("Maryland")]
-    
-    if (len(maryland) > 0):
-        irow = maryland.iterrows()
-        for i in irow:
-            print(i[1]['title'])
-            print(i[1]['publication_date'])
-            buildTweet(i[1]['title'],i[1]['html_url'])
-            text = getFullText(i[1]['body_html_url'])
-            #print(text)
-            print("\n")
-    
+        titles = []
+        types = []
+        abstracts = []
+        publication_dates = []
+        html_urls = []
+        body_html_urls = []
+        document_numbers = []
+        actions = []
+        significants = []
+        topics = []
+        #agencies = []
+        
+        for j in results:
+            #s=getSingleDoc(j['document_number'])
+            titles.append(j['title'])
+            types.append(j['type'])
+            abstracts.append(j['abstract'])
+            publication_dates.append(j['publication_date'])
+            html_urls.append(j['html_url'])
+            body_html_urls.append(j['body_html_url'])
+            document_numbers.append(j['document_number'])
+            actions.append(j['action'])
+            significants.append(j['significant'])
+            topics.append(j['topics'])
+            
+        data = pd.DataFrame(
+            {'title': titles,
+             'type': types,
+             'abstact': abstracts,
+             'publication_date' : publication_dates,
+             'html_url' : html_urls,
+             'document_number' : document_numbers,
+             'action' : actions,
+             'significant' : significants,
+             'topic' : topics,
+             'body_html_url' : body_html_urls
+            })
+        
+        data = data.replace(np.nan, '', regex=True)    
+        maryland = data[data['abstact'].str.contains("Maryland")]
+        
+        if (len(maryland) > 0):
+            irow = maryland.iterrows()
+            for i in irow:
+                print(i[1]['title'])
+                print(i[1]['publication_date'])
+                buildTweet(i[1]['title'],i[1]['html_url'])
+                text = getFullText(i[1]['body_html_url'])
+                #print(text)
+                print("\n")
+
+getKeywordStats(1)
 # text = "EPA Final Rule"
 # link = "https://www.federalregister.gov/documents/2018/01/29/2018-01518/approval-and-promulgation-of-air-quality-implementation-plans-maryland-nonattainment-new-source"
 # buildTweet(text, link)   
