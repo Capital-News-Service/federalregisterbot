@@ -10,7 +10,13 @@ import pandas as pd
 import numpy as np
 import json
 import re
+import math
 from bs4 import BeautifulSoup
+import nltk
+import string
+from collections import Counter
+from nltk.corpus import stopwords
+
 
 keys={}
 with open("keys.json","r") as f:
@@ -91,16 +97,64 @@ def getKeywordStats(days):
                 'significant' : j['significant'],
                 'topic' : j['topics']}
             data.append(entry)
-    stats = {'abstract_keywords' : {}}
-    print len(data)
+    #print len(data)
+    # for entry in data:
+    #     if (entry['abstract'] != None):
+    #         abstract = entry['abstract'].encode('ascii','ignore').lower().translate(None, string.punctuation)
+    #         # for i in re.findall('(?:(?<!The\s)(?:[A-Z][\w\-\[\]\.]*\w,?\s|U\.S\.\s|Mr\.\s|Ms\.\s|\Mrs\.\s)(?:[A-Z][\w\-\[\]\.]+\w,?\s|and\s|the\s|for\s|of\s)*(?:[A-Z][\w\-\[\]\.,]+\w|\d+))|(?:http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)|(?:[\w\-\[\]\.]+\w)',abstract):
+    #         for i in re.findall('[\w\-\[\]\.]+\w',abstract):
+    #             if not(i in stats['abstract_keywords']):
+    #                 stats['abstract_keywords'][i] = 1
+    #             else:
+    #                 stats['abstract_keywords'][i] += 1
+    # max_size = max([len(i) for i in stats['abstract_keywords'].keys()])
+    # with open() as k:
+    #     for key, value in sorted(stats['abstract_keywords'].iteritems(), key=lambda (k,v): (-1*v,k)):
+    #         print "%-20s  %-3s" % (key[:20],str(value)
+    abstracts = {}
+    c=1
     for entry in data:
         if (entry['abstract'] != None):
-            abstract = entry['abstract'].encode('ascii','ignore')
-            print '\n'
-            print abstract
-            print '\n'
-            for i in re.findall('(?:(?:[A-Z][\w\-\[\]\.]*\w,?\s|U\.S\.\s|Mr\.\s|\Mrs\.\s)(?:[A-Z][\w\-\[\]\.]+\w,?\s|and\s|the\s|for\s|of\s)*(?:[A-Z][\w\-\[\]\.,]+\w|\d+))|(?:http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)|(?:[\w\-\[\]\.]+\w)',abstract):
-                    print i
+            abstract = entry['abstract'].encode('ascii','ignore').lower().translate(None, string.punctuation)
+            tokens = nltk.word_tokenize(abstract)
+            filtered = [w for w in tokens if not w in stopwords.words('english')]
+            regex = re.compile('[0-9]')
+            filtered = [ i for i in filtered if not(regex.search(i))]
+            if (entry['title'] != None):
+                abstracts[entry['title'].encode('ascii','ignore')] = filtered
+            else:
+                abstracts['Untitled '+str(c)] = filtered
+                c+=1
+    # use only one of the following lines, whichever you prefer
+    idf = {}
+    tf = {}
+    print abstracts
+    for k,v in abstracts.iteritems():
+        tf[k] = {}
+        for i in v:
+            if (i in tf[k].keys()):
+                tf[k][i] += 1
+            else:
+                tf[k][i] = 1
+            if (i in idf.keys()):
+                idf[i] += 1
+            else:
+                idf[i] = 1
+    ndf=len(abstracts)
+    for k,v in idf.iteritems():
+        idf[k] = math.log(ndf*1.0/v)
+    print idf
+    for k,v in tf.iteritems():
+        dl=len(tf[k])
+        for k1,v1 in tf[k].iteritems():
+            tf[k][k1]*=(idf[k1]*1.0/dl)
+        print k
+        print [i[0] for i in sorted(tf[k].iteritems(), key=lambda (k,v): (-1*v,k))[:6]]
+        print
+
+
+
+
 
 def filter():
     numdays = 60
@@ -164,7 +218,7 @@ def filter():
                 #print(text)
                 print("\n")
 
-getKeywordStats(1)
+getKeywordStats(20)
 # text = "EPA Final Rule"
 # link = "https://www.federalregister.gov/documents/2018/01/29/2018-01518/approval-and-promulgation-of-air-quality-implementation-plans-maryland-nonattainment-new-source"
 # buildTweet(text, link)   
