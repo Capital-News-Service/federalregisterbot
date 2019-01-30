@@ -7,9 +7,9 @@ https://twitter.com/mdfedregbot?lang=en
 
 Made by Jake Gluck and Jane Gerard. 
 
-[jagluck.github.io](jagluck.github.io).   
+[jagluck.github.io](jagluck.github.io)   
 jakeagluck@gmail.com jagluck@terpmail.umd.edu
 
-https://twitter.com/janegerard23
+https://twitter.com/janegerard23   
 https://github.com/janegerard
 
